@@ -27,3 +27,16 @@
     { {{doc.returns.typeList}} - {{doc.returns.description}} }
 </p>
 {%- endif %}
+
+{%- if doc.examples %}
+<h2>
+    Examples
+</h2>
+<ul>
+    {%- for example in doc.examples %}
+        <li>
+            {{example.content}}
+        </li>
+    {%- endfor %}
+</ul>
+{%- endif %}

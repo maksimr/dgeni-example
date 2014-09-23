@@ -15,7 +15,29 @@ var dgeni = new Dgeni([
   new Package('dgeni-example', [
     require('dgeni-packages/jsdoc'),
     require('dgeni-packages/nunjucks')
-  ]).config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor) {
+  ])
+  .processor(function MyProcessor() {
+    return {
+      $runAfter: ['processing-docs'],
+      $runBefore: ['renderDocsProcessor'],
+      $process: function(docs) {
+        docs.forEach(function(doc) {
+          var docTags = doc.tags;
+
+          if (docTags.badTags) {
+            doc.examples = docTags.badTags.filter(function(tag) {
+              return tag.tagName === 'example';
+            }).map(function(exampleTag) {
+              return {
+                content: exampleTag.description
+              };
+            });
+          }
+        });
+      }
+    };
+  })
+  .config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor) {
     log.level = LogLevel.INFO;
 
     readFilesProcessor.basePath = __dirname;
