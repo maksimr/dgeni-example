@@ -16,30 +16,30 @@ var dgeni = new Dgeni([
     require('dgeni-packages/jsdoc'),
     require('dgeni-packages/nunjucks')
   ])
-  .processor(function MyProcessor() {
+
+  .factory(require('dgeni-packages/examples/services/exampleMap'))
+  .processor(require('dgeni-packages/examples/processors/examples-parse'))
+
+  .processor(function inlineExampleToDoc(exampleMap) {
     return {
-      $runAfter: ['processing-docs'],
+      $runAfter: ['parseExamplesProcessor'],
       $runBefore: ['renderDocsProcessor'],
       $process: function(docs) {
-        docs.forEach(function(doc) {
-          var docTags = doc.tags;
+        exampleMap.forEach(function(example) {
+          this._addExampleToDoc(example);
+        }.bind(this));
 
-          if (docTags.badTags) {
-            doc.examples = docTags.badTags.filter(function(tag) {
-              return tag.tagName === 'example';
-            }).map(function(exampleTag) {
-              return {
-                content: exampleTag.description
-              };
-            });
-          }
-        });
+        return docs;
+      },
+      _addExampleToDoc: function(example) {
+        var doc = example.doc;
+        doc.examples = doc.examples || [];
+        doc.examples.push(example);
       }
     };
   })
   .config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor) {
     log.level = LogLevel.INFO;
-
     readFilesProcessor.basePath = __dirname;
     readFilesProcessor.sourceFiles = [{
       include: 'js/**/*.js'

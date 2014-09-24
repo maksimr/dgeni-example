@@ -1,9 +1,6 @@
 <h1>
     {{doc.codeName}} {{doc.outputPath}}
 </h1>
-<p>
-    {{doc.description}}
-</p>
 
 {%- if doc.params %}
 <h2>
@@ -35,7 +32,15 @@
 <ul>
     {%- for example in doc.examples %}
         <li>
-            {{example.content}}
+            <h3>
+                {{example.name}}
+            </h3>
+
+            {%- for fileName, file in example.files %}
+                <p>
+                    {{fileName}}
+                </p>
+            {%- endfor %}
         </li>
     {%- endfor %}
 </ul>

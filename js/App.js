@@ -1,9 +1,11 @@
 /**
  * @name Main
  * @description Hello World
- * @example
-   <example>
-     console.log('Main Example');
+   <example name="MyExample">
+    <file name="app.js">
+       var path = require('path');
+       console.log(path);
+    </file>
    </example>
  */
 function Main() {
