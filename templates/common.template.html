@@ -1,53 +1,28 @@
-<h1>
-    {{doc.codeName}} {{doc.outputPath}}
-</h1>
+<!DOCTYPE html>
+<html>
 
-{%- if doc.params %}
-<h2>
-    Params
-</h2>
-<ul>
-    {%- for param in doc.params %}
-        <li>
-            <strong>{{param.name}}</strong>
-            { {{param.typeList}} } - {{param.description}}
-        </li>
-    {%- endfor %}
-</ul>
-{%- endif %}
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <title></title>
+    </head>
 
-{%- if doc.returns %}
-<h2>
-    Returns
-</h2>
-<p>
-    { {{doc.returns.typeList}} - {{doc.returns.description}} }
-</p>
-{%- endif %}
+    <body>
+        <h1>
+            {{doc.fileInfo.baseName}}
+        </h1>
 
-{%- if doc.examples %}
-<h2>
-    Examples
-</h2>
-<ul>
-    {%- for example in doc.examples %}
-        <li>
-            <h3>
-                {{example.name}}
-            </h3>
-
-            {%- for fileName, file in example.files %}
-                <p>
-                    {{fileName}}
-                </p>
-
-                {%- if file.webpack %}
-                    <pre>
-                        {{file.webpack.fileContents}}
-                    </pre>
-                {%- endif %}
+        {%- for doc in doc.components %}
+        <div>
+            <h1> {{doc.codeName}} </h1>
+            {%- for example in doc.examples %}
+            <section class="example">
+                <iframe src="examples/example-{{example.name}}/index-testDeployment.html" frameborder="0">
+                </iframe>
+            </section>
             {%- endfor %}
-        </li>
-    {%- endfor %}
-</ul>
-{%- endif %}
+        </div>
+        {%- endfor %}
+    </body>
+
+</html>

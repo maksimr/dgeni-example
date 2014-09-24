@@ -18,20 +18,16 @@ var dgeni = new Dgeni([
    */
   new Package('dgeni-example', [
     require('dgeni-packages/jsdoc'),
+    require('dgeni-packages/examples'),
     require('dgeni-packages/nunjucks')
   ])
-
   .factory('webpackConfig', function() {
     return {};
   })
-
-  .factory(require('dgeni-packages/examples/services/exampleMap'))
-  .processor(require('dgeni-packages/examples/processors/examples-parse'))
-
   .processor(function webpackExampleProcessor(exampleMap, webpackConfig) {
     return {
       $runAfter: ['parseExamplesProcessor'],
-      $runBefore: ['renderDocsProcessor'],
+      $runBefore: ['generateExamplesProcessor'],
       $process: function(docs) {
         return when.all(exampleMap.map(function(example) {
           return when.all(
@@ -91,9 +87,8 @@ var dgeni = new Dgeni([
             .readFileSync(path.resolve(webpackConfig.output.path, webpackConfig.output.filename))
             .toString();
 
-          file.webpack = {
-            fileContents: processedFileContent
-          };
+          file.originFileContents = file.fileContents;
+          file.fileContents = processedFileContent;
 
           defer.resolve();
         });
@@ -163,7 +158,40 @@ var dgeni = new Dgeni([
       }
     };
   })
-  .config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor) {
+
+  .processor(function joinDocsToComponent() {
+    return {
+      $runAfter: ['parseExamplesProcessor'],
+      $runBefore: ['computeIdsProcessor'],
+      $process: function(docs) {
+        var exampleDocs = docs.filter(function(doc) {
+          return doc.docType !== 'js';
+        });
+        var createGroup = function(doc) {
+          doc.name = doc.fileInfo.baseName;
+          doc.components = [];
+          return doc;
+        };
+
+        var componentsMap = docs.filter(function(doc) {
+          return doc.docType === 'js';
+        }).reduce(function(componentGroups, doc) {
+          var groupId = doc.fileInfo.filePath;
+          componentGroups[groupId] = componentGroups[groupId] || createGroup(doc);
+          componentGroups[groupId].components.push(doc);
+          return componentGroups;
+        }, {});
+
+        var components = Object.keys(componentsMap).map(function (groupId) {
+          return componentsMap[groupId];
+        });
+
+        return components.concat(exampleDocs);
+      }
+    };
+  })
+
+  .config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor, generateExamplesProcessor, generateProtractorTestsProcessor) {
     log.level = LogLevel.INFO;
     readFilesProcessor.basePath = __dirname;
     readFilesProcessor.sourceFiles = [{
@@ -177,17 +205,26 @@ var dgeni = new Dgeni([
     templateFinder.templateFolders.unshift(
       path.resolve(__dirname, 'templates'));
 
-    templateFinder.templatePatterns.unshift(
-
-      /**
-       * Specify how to match docs to templates.
-       * In this case we just use the same static template
-       * for all docs
-       */
+    templateFinder.templatePatterns = [
+      '<%= doc.template %>',
+      '<%= doc.docType %>.template',
       'common.template.html'
-    );
+    ];
 
     writeFilesProcessor.outputFolder = 'docs';
+
+    generateProtractorTestsProcessor.$enabled = false;
+    generateExamplesProcessor.deployments = [{
+      name: 'testDeployment',
+      examples: {
+        commonFiles: {
+          scripts: ['']
+        },
+        dependencyPath: ''
+      },
+      scripts: [],
+      stylesheets: []
+    }];
   })
 ]);
 
