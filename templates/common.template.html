@@ -40,6 +40,12 @@
                 <p>
                     {{fileName}}
                 </p>
+
+                {%- if file.webpack %}
+                    <pre>
+                        {{file.webpack.fileContents}}
+                    </pre>
+                {%- endif %}
             {%- endfor %}
         </li>
     {%- endfor %}
