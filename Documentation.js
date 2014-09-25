@@ -5,6 +5,7 @@ var Package = Dgeni.Package;
 var webpack = require('webpack');
 var MemoryFileSystem = require('memory-fs');
 var when = require('when');
+var merge = require('react/lib/merge');
 
 var LogLevel = {
   INFO: 'info'
@@ -21,9 +22,28 @@ var dgeni = new Dgeni([
     require('dgeni-packages/examples'),
     require('dgeni-packages/nunjucks')
   ])
+
+  /**
+   * Webpack configuration
+   * @return {Object} Webpack config object
+   */
   .factory('webpackConfig', function() {
-    return {};
+    return {
+      module: {
+        loaders: [{
+          test: /\.jsx$/,
+          loaders: ['jsx']
+        }]
+      }
+    };
   })
+
+  /**
+   * Process example code using webpack
+   * @param {Object} exampleMap Map with examples. Require `dgeni-packages/example`
+   * @param {Object} webpackConfig Webpack config object
+   * @return {Object}
+   */
   .processor(function webpackExampleProcessor(exampleMap, webpackConfig) {
     return {
       $runAfter: ['parseExamplesProcessor'],
@@ -59,7 +79,9 @@ var dgeni = new Dgeni([
       },
 
       /**
-       * Processing file content using webpack
+       * Processing file content using webpack and put it to
+       * fileContents property of file object. Original content
+       * will be available through property originalFileContents
        * @param {Object} doc
        * @param {Object} file
        * @return {Object} Deferred object
@@ -68,31 +90,51 @@ var dgeni = new Dgeni([
         var defer = when.defer();
 
         var entryFilePath = this._getExampleFilePath(doc, file);
-        webpackConfig.entry = entryFilePath;
-        webpackConfig.output = {
+
+        /**
+         * Create webpack config for example file
+         */
+        var config = merge(webpackConfig);
+        config.entry = entryFilePath;
+        config.output = {
           path: '/',
           filename: 'test.js'
         };
 
-        var compiler = webpack(webpackConfig);
+        var compiler = webpack(config);
+
+        /**
+         * Setup custom input and out file systems
+         * to webpack compiler
+         */
         compiler.inputFileSystem = this._getInputFileSystem(file, entryFilePath);
         compiler.resolvers.normal.fileSystem = compiler.inputFileSystem;
         compiler.resolvers.context.fileSystem = compiler.inputFileSystem;
         compiler.resolvers.loader.fileSystem = compiler.inputFileSystem;
         compiler.outputFileSystem = new MemoryFileSystem();
 
+        /**
+         * Subscribe on compilation done
+         */
         compiler.plugin('done', function() {
           var processedFileContent = compiler
             .outputFileSystem
-            .readFileSync(path.resolve(webpackConfig.output.path, webpackConfig.output.filename))
+            .readFileSync(path.resolve(config.output.path, config.output.filename))
             .toString();
 
-          file.originFileContents = file.fileContents;
+          /**
+           * XXX:
+           * Modify file object
+           */
+          file.originalFileContents = file.fileContents;
           file.fileContents = processedFileContent;
 
           defer.resolve();
         });
 
+        /**
+         * Run webpack compiler
+         */
         compiler.run(function(error, status) {
           if (error) {
             defer.reject();
@@ -102,10 +144,23 @@ var dgeni = new Dgeni([
 
         return defer.promise;
       },
+
+      /**
+       * Get path for example relative to file
+       * in which located example
+       * @return {String} Example file path
+       */
       _getExampleFilePath: function(doc, file) {
         return path.resolve(
           path.dirname(doc.fileInfo.filePath), file.name);
       },
+
+      /**
+       * XXX
+       * Monkey patched file system.
+       * If request entry path then immediately return content
+       * from object file, because entry file is virtual file(example file)
+       */
       _getInputFileSystem: function(file, entryFilePath) {
         var fs = require('fs');
         var inputFileSystem = {};
@@ -182,7 +237,7 @@ var dgeni = new Dgeni([
           return componentGroups;
         }, {});
 
-        var components = Object.keys(componentsMap).map(function (groupId) {
+        var components = Object.keys(componentsMap).map(function(groupId) {
           return componentsMap[groupId];
         });
 
@@ -191,11 +246,35 @@ var dgeni = new Dgeni([
     };
   })
 
-  .config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor, generateExamplesProcessor, generateProtractorTestsProcessor) {
+  /**
+   * @description Transform jsx file to js
+   * @param {Object} jsddocFileReader
+   * @return {Object} The jsx file reader
+   */
+  .factory(function jsxFileReader(jsdocFileReader) {
+    return {
+      name: 'jsxFileReader',
+      defaultPattern: /\.jsx$/,
+      getDocs: function(fileInfo) {
+        fileInfo.content = require('react-tools').transform(fileInfo.content);
+        return jsdocFileReader.getDocs(fileInfo);
+      }
+    };
+  })
+
+  /**
+   * Configure dgeni packages
+   */
+  .config(function(log, readFilesProcessor, templateFinder, writeFilesProcessor, generateExamplesProcessor, generateProtractorTestsProcessor, jsxFileReader) {
     log.level = LogLevel.INFO;
+
+    /**
+     * Reading source files
+     */
+    readFilesProcessor.fileReaders.unshift(jsxFileReader);
     readFilesProcessor.basePath = __dirname;
     readFilesProcessor.sourceFiles = [{
-      include: 'js/**/*.js'
+      include: 'js/**/*.jsx'
     }];
 
     /**

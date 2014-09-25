@@ -6,8 +6,10 @@
   "devDependencies": {
     "dgeni": "^0.4.0",
     "dgeni-packages": "^0.10.0-rc.6",
+    "jsx-loader": "^0.11.0",
     "memory-fs": "^0.1.0",
     "react": "^0.11.2",
+    "react-tools": "^0.11.2",
     "webpack": "^1.4.3",
     "when": "^3.4.6"
   }
