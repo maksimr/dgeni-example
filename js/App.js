@@ -3,11 +3,20 @@
  * @description Hello World
    <example name="MyExample">
      <file name="index.html">
-       <div>Hello World!</div>
+       <div id="example">
+       </div>
      </file>
      <file name="app.js" webpack="true">
-       var path = require('path');
-       console.log(path);
+       var React = require('react');
+
+       var MyComponent = React.createClass({
+          render: function() {
+            return React.DOM.div(null, 'React Component!');
+          }
+       });
+
+       React.renderComponent(MyComponent(),
+         document.getElementById('example'));
      </file>
    </example>
  */
